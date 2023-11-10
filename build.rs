@@ -1,31 +1,78 @@
-//! This build script copies the `memory.x` file from the crate root into
-//! a directory where the linker can always find it at build time.
-//! For many projects this is optional, as the linker always searches the
-//! project root directory -- wherever `Cargo.toml` is. However, if you
-//! are using a workspace or have a more complicated build setup, this
-//! build script becomes required. Additionally, by requesting that
-//! Cargo re-run the build script whenever `memory.x` is changed,
-//! updating `memory.x` ensures a rebuild of the application with the
-//! new memory settings.
+[package]
+edition = "2021"
+name = "rp2040-project-template"
+version = "0.1.0"
+license = "MIT OR Apache-2.0"
 
-use std::env;
-use std::fs::File;
-use std::io::Write;
-use std::path::PathBuf;
+[dependencies]
+cortex-m = "0.7"
+cortex-m-rt = "0.7"
+embedded-hal = { version = "0.2.5", features = ["unproven"] }
 
-fn main() {
-    // Put `memory.x` in our output directory and ensure it's
-    // on the linker search path.
-    let out = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
-    File::create(out.join("memory.x"))
-        .unwrap()
-        .write_all(include_bytes!("memory.x"))
-        .unwrap();
-    println!("cargo:rustc-link-search={}", out.display());
+defmt = "0.3"
+defmt-rtt = "0.4"
+panic-probe = { version = "0.3", features = ["print-defmt"] }
 
-    // By default, Cargo will re-run a build script whenever
-    // any file in the project changes. By specifying `memory.x`
-    // here, we ensure the build script is only re-run when
-    // `memory.x` is changed.
-    println!("cargo:rerun-if-changed=memory.x");
-}
+# We're using a Pico by default on this template
+rp-pico = "0.8"
+rp2040-hal = "0.7.0"
+dht-sensor = "0.2.1"
+
+# but you can use any BSP. Uncomment this to use the pro_micro_rp2040 BSP instead
+# sparkfun-pro-micro-rp2040 = "0.7"
+
+# If you're not going to use a Board Support Package you'll need these:
+# rp2040-hal = { version="0.9", features=["rt", "critical-section-impl"] }
+# rp2040-boot2 = "0.3"
+
+# cargo build/run
+[profile.dev]
+codegen-units = 1
+debug = 2
+debug-assertions = true
+incremental = false
+opt-level = 3
+overflow-checks = true
+
+# cargo build/run --release
+[profile.release]
+codegen-units = 1
+debug = 2
+debug-assertions = false
+incremental = false
+lto = 'fat'
+opt-level = 3
+overflow-checks = false
+
+# do not optimize proc-macro crates = faster builds from scratch
+[profile.dev.build-override]
+codegen-units = 8
+debug = false
+debug-assertions = false
+opt-level = 0
+overflow-checks = false
+
+[profile.release.build-override]
+codegen-units = 8
+debug = false
+debug-assertions = false
+opt-level = 0
+overflow-checks = false
+
+# cargo test
+[profile.test]
+codegen-units = 1
+debug = 2
+debug-assertions = true
+incremental = false
+opt-level = 3
+overflow-checks = true
+
+# cargo test --release
+[profile.bench]
+codegen-units = 1
+debug = 2
+debug-assertions = false
+incremental = false
+lto = 'fat'
+opt-level = 3

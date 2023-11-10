@@ -4,9 +4,9 @@
 #![no_std]
 #![no_main]
 
-use bsp::entry;
 use defmt::*;
 use defmt_rtt as _;
+use embedded_hal::adc::OneShot;
 use embedded_hal::digital::v2::OutputPin;
 use panic_probe as _;
 
@@ -15,11 +15,17 @@ use panic_probe as _;
 use rp_pico as bsp;
 // use sparkfun_pro_micro_rp2040 as bsp;
 
-use bsp::hal::{
-    clocks::{init_clocks_and_plls, Clock},
-    pac,
-    sio::Sio,
-    watchdog::Watchdog,
+use bsp::{
+    entry,
+    hal::{
+        adc::AdcPin,
+        clocks::{init_clocks_and_plls, Clock},
+        pac,
+        sio::Sio,
+        watchdog::Watchdog,
+        Adc,
+    },
+    Pins,
 };
 
 #[entry]
@@ -59,14 +65,21 @@ fn main() -> ! {
     // a Pico W and want to toggle a LED with a simple GPIO output pin, you can connect an external
     // LED to one of the GPIO pins, and reference that pin here.
     let mut led_pin = pins.led.into_push_pull_output();
-
+    // Enable adc
+    let mut adc = Adc::new(pac.ADC, &mut pac.RESETS);
+    // Configure one of the pins as an ADC input
+    let mut adc_pin_0 = AdcPin::new(pins.gpio28.into_floating_input());
+    // Read the ADC counts from the ADC channel
     loop {
-        info!("on!");
-        led_pin.set_high().unwrap();
-        delay.delay_ms(500);
-        info!("off!");
-        led_pin.set_low().unwrap();
-        delay.delay_ms(500);
+        let pin_adc_counts: u16 = adc.read(&mut adc_pin_0).unwrap();
+        //let pin_adc_counts: u16 = adc.read(&mut adc_pin_0).unwrap();
+        info!("{}", pin_adc_counts);
+        //        info!("on!");
+        //        led_pin.set_high().unwrap();
+        // delay.delay_ms(500);
+        //        info!("off!");
+        //        led_pin.set_low().unwrap();
+        //        delay.delay_ms(500);
     }
 }
 
