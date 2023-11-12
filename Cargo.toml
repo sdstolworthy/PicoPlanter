@@ -17,6 +17,9 @@ panic-probe = { version = "0.3", features = ["print-defmt"] }
 rp-pico = "0.8"
 rp2040-hal = "0.7.0"
 dht-sensor = "0.2.1"
+fugit = "0.3.7"
+ssd1306 = "0.8.4"
+embedded-graphics = "0.8.1"
 
 [features]
 unproven = []
