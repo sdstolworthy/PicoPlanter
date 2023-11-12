@@ -1,31 +1,27 @@
-//! Blinks the LED on a Pico board
-//!
-//! This will blink an LED attached to GP25, which is the pin the Pico uses for the on-board LED.
 #![no_std]
 #![no_main]
 
+mod moisture_detector;
+use moisture_detector::{GPIOMoistureReader, MoistureReader};
+
 use defmt::*;
 use defmt_rtt as _;
-use embedded_hal::adc::OneShot;
-use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::adc::{Channel, OneShot};
 use panic_probe as _;
 
-// Provide an alias for our BSP so we can switch targets quickly.
-// Uncomment the BSP you included in Cargo.toml, the rest of the code does not need to change.
 use rp_pico as bsp;
-// use sparkfun_pro_micro_rp2040 as bsp;
 
 use bsp::{
     entry,
     hal::{
         adc::AdcPin,
-        clocks::{init_clocks_and_plls, Clock},
+        //    clocks::{init_clocks_and_plls, Clock},
+        //    gpio::{bank0::Gpio28, AnyPin, SpecificPin},
         pac,
         sio::Sio,
         watchdog::Watchdog,
         Adc,
     },
-    Pins,
 };
 
 #[entry]
@@ -37,20 +33,20 @@ fn main() -> ! {
     let sio = Sio::new(pac.SIO);
 
     // External high-speed crystal on the pico board is 12Mhz
-    let external_xtal_freq_hz = 12_000_000u32;
-    let clocks = init_clocks_and_plls(
-        external_xtal_freq_hz,
-        pac.XOSC,
-        pac.CLOCKS,
-        pac.PLL_SYS,
-        pac.PLL_USB,
-        &mut pac.RESETS,
-        &mut watchdog,
-    )
-    .ok()
-    .unwrap();
-
-    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
+    //    let external_xtal_freq_hz = 12_000_000u32;
+    //    let clocks = init_clocks_and_plls(
+    //        external_xtal_freq_hz,
+    //        pac.XOSC,
+    //        pac.CLOCKS,
+    //        pac.PLL_SYS,
+    //        pac.PLL_USB,
+    //        &mut pac.RESETS,
+    //        &mut watchdog,
+    //    )
+    //    .ok()
+    //    .unwrap();
+    //
+    //    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
 
     let pins = bsp::Pins::new(
         pac.IO_BANK0,
@@ -64,23 +60,36 @@ fn main() -> ! {
     // Notably, on the Pico W, the LED is not connected to any of the RP2040 GPIOs but to the cyw43 module instead. If you have
     // a Pico W and want to toggle a LED with a simple GPIO output pin, you can connect an external
     // LED to one of the GPIO pins, and reference that pin here.
-    let mut led_pin = pins.led.into_push_pull_output();
+    //    let led_pin = pins.led.into_push_pull_output();
     // Enable adc
     let mut adc = Adc::new(pac.ADC, &mut pac.RESETS);
     // Configure one of the pins as an ADC input
     let mut adc_pin_0 = AdcPin::new(pins.gpio28.into_floating_input());
+
+    let mut reader: moisture_detector::GPIOMoistureReader<
+        '_,
+        u16,
+        AdcPin<
+            bsp::hal::gpio::Pin<
+                bsp::hal::gpio::bank0::Gpio28,
+                bsp::hal::gpio::FunctionSio<bsp::hal::gpio::SioInput>,
+                bsp::hal::gpio::PullNone,
+            >,
+        >,
+    > = GPIOMoistureReader::new(&mut adc, &mut adc_pin_0);
+
     // Read the ADC counts from the ADC channel
     loop {
-        let pin_adc_counts: u16 = adc.read(&mut adc_pin_0).unwrap();
         //let pin_adc_counts: u16 = adc.read(&mut adc_pin_0).unwrap();
-        info!("{}", pin_adc_counts);
-        //        info!("on!");
-        //        led_pin.set_high().unwrap();
-        // delay.delay_ms(500);
-        //        info!("off!");
-        //        led_pin.set_low().unwrap();
-        //        delay.delay_ms(500);
+        let moisture = reader.get_moisture();
+        //let pin_adc_counts: u16 = adc.read(&mut adc_pin_0).unwrap();
+        info!("{}", moisture);
     }
 }
 
-// End of file
+//        info!("on!");
+//        led_pin.set_high().unwrap();
+// delay.delay_ms(500);
+//        info!("off!");
+//        led_pin.set_low().unwrap();
+//        delay.delay_ms(500);
