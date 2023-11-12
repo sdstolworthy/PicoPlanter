@@ -6,7 +6,7 @@ use moisture_detector::{GPIOMoistureReader, MoistureReader};
 
 use defmt::*;
 use defmt_rtt as _;
-use embedded_hal::adc::{Channel, OneShot};
+use embedded_hal::digital::v2::{InputPin, OutputPin};
 use panic_probe as _;
 
 use rp_pico as bsp;
@@ -19,7 +19,6 @@ use bsp::{
         //    gpio::{bank0::Gpio28, AnyPin, SpecificPin},
         pac,
         sio::Sio,
-        watchdog::Watchdog,
         Adc,
     },
 };
@@ -28,8 +27,6 @@ use bsp::{
 fn main() -> ! {
     info!("Program start");
     let mut pac = pac::Peripherals::take().unwrap();
-    let core = pac::CorePeripherals::take().unwrap();
-    let mut watchdog = Watchdog::new(pac.WATCHDOG);
     let sio = Sio::new(pac.SIO);
 
     // External high-speed crystal on the pico board is 12Mhz
@@ -65,6 +62,7 @@ fn main() -> ! {
     let mut adc = Adc::new(pac.ADC, &mut pac.RESETS);
     // Configure one of the pins as an ADC input
     let mut adc_pin_0 = AdcPin::new(pins.gpio28.into_floating_input());
+    info!("pins");
 
     let mut reader: moisture_detector::GPIOMoistureReader<
         '_,
@@ -78,8 +76,23 @@ fn main() -> ! {
         >,
     > = GPIOMoistureReader::new(&mut adc, &mut adc_pin_0);
 
+    info!("{}", reader.get_moisture());
+
+    //    info!("setting relay pin");
+    //    let mut relay_pin = pins.gpio15.into_push_pull_output();
+    //
+    //    info!("setting pin");
+    //    if relay_pin.is_low().unwrap() {
+    //        relay_pin.set_high().unwrap();
+    //        info!("set high");
+    //    } else {
+    //        relay_pin.set_low().unwrap();
+    //        info!("set set low");
+    //    }
+
     // Read the ADC counts from the ADC channel
     loop {
+        info!("get moisture");
         //let pin_adc_counts: u16 = adc.read(&mut adc_pin_0).unwrap();
         let moisture = reader.get_moisture();
         //let pin_adc_counts: u16 = adc.read(&mut adc_pin_0).unwrap();
